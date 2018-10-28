@@ -38,7 +38,6 @@ import com.google.common.io.Resources;
 import com.google.common.net.HttpHeaders;
 import com.google.common.net.MediaType;
 
-import java.awt.color.CMMException;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
@@ -63,6 +62,7 @@ import java.util.Timer;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 import javax.imageio.ImageIO;
 import javax.servlet.RequestDispatcher;
@@ -92,6 +92,7 @@ public final class DecodeServlet extends HttpServlet {
 
   private static final Logger log = Logger.getLogger(DecodeServlet.class.getName());
 
+  private static final Pattern WHITESPACE = Pattern.compile("\\s+");
   // No real reason to let people upload more than ~64MB
   private static final long MAX_IMAGE_SIZE = 1L << 26;
   // No real reason to deal with more than ~32 megapixels
@@ -108,7 +109,7 @@ public final class DecodeServlet extends HttpServlet {
     HINTS_PURE.put(DecodeHintType.PURE_BARCODE, Boolean.TRUE);
   }
 
-  private Iterable<String> blockedURLSubstrings;
+  private Collection<String> blockedURLSubstrings;
   private Timer timer;
   private DoSTracker destHostTracker;
 
@@ -152,12 +153,16 @@ public final class DecodeServlet extends HttpServlet {
       return;
     }
 
-    imageURIString = imageURIString.trim();
-    for (CharSequence substring : blockedURLSubstrings) {
-      if (imageURIString.contains(substring)) {
-        log.info("Disallowed URI " + imageURIString);
-        errorResponse(request, response, "badurl");
-        return;
+    // Remove any whitespace to sanitize; none is valid anyway
+    imageURIString = WHITESPACE.matcher(imageURIString).replaceAll("");
+
+    if (!blockedURLSubstrings.isEmpty()) {
+      for (CharSequence substring : blockedURLSubstrings) {
+        if (imageURIString.contains(substring)) {
+          log.info("Disallowed URI " + imageURIString);
+          errorResponse(request, response, "badurl");
+          return;
+        }
       }
     }
 
@@ -176,12 +181,13 @@ public final class DecodeServlet extends HttpServlet {
     
     // Shortcut for data URI
     if ("data".equals(imageURI.getScheme())) {
-      BufferedImage image = null;
+      BufferedImage image;
       try {
         image = ImageReader.readDataURIImage(imageURI);
-      } catch (IOException | IllegalStateException e) {
+      } catch (Exception e) {
         log.info("Error " + e + " while reading data URI: " + imageURIString);
         errorResponse(request, response, "badurl");
+        return;
       }
       if (image == null) {
         log.info("Couldn't read data URI: " + imageURIString);
@@ -193,6 +199,11 @@ public final class DecodeServlet extends HttpServlet {
       } finally {
         image.flush();
       }
+      return;
+    }
+
+    if (destHostTracker.isBanned(imageURI.getHost())) {
+      errorResponse(request, response, "badurl");
       return;
     }
     
@@ -210,11 +221,6 @@ public final class DecodeServlet extends HttpServlet {
       log.info("URL protocol was not valid: " + imageURIString);
       errorResponse(request, response, "badurl");
       return;
-    }
-
-    if (destHostTracker.isBanned(imageURL.getHost())) {
-      log.info("Temporarily not requesting from host: " + imageURIString);
-      errorResponse(request, response, "badurl");
     }
 
     HttpURLConnection connection;
@@ -235,7 +241,7 @@ public final class DecodeServlet extends HttpServlet {
 
     try {
       connection.connect();
-    } catch (IOException | IllegalArgumentException e) {
+    } catch (Exception e) {
       // Encompasses lots of stuff, including
       //  java.net.SocketException, java.net.UnknownHostException,
       //  javax.net.ssl.SSLPeerUnverifiedException,
@@ -297,12 +303,9 @@ public final class DecodeServlet extends HttpServlet {
     Collection<Part> parts;
     try {
       parts = request.getParts();
-    } catch (IllegalStateException ise) {
-      log.info("File upload was too large or invalid");
-      errorResponse(request, response, "badimage");
-      return;
-    } catch (IOException ioe) {
-      log.info(ioe.toString());
+    } catch (Exception e) {
+      // Includes IOException, InvalidContentTypeException, other parsing IllegalStateException
+      log.info(e.toString());
       errorResponse(request, response, "badimage");
       return;
     }
@@ -331,9 +334,8 @@ public final class DecodeServlet extends HttpServlet {
     BufferedImage image;
     try {
       image = ImageIO.read(is);
-    } catch (IOException | CMMException | IllegalArgumentException | ArrayIndexOutOfBoundsException e) {
-      // Have seen these in some logs, like an AIOOBE from certain GIF images
-      // https://github.com/zxing/zxing/issues/862#issuecomment-376159343
+    } catch (Exception e) {
+      // Many possible failures from JAI, so just catch anything as a failure
       log.info(e.toString());
       errorResponse(request, response, "badimage");
       return;

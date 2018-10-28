@@ -73,8 +73,10 @@ public final class UPCEWriter extends UPCEANWriter {
         break;
       default:
         throw new IllegalArgumentException(
-            "Requested contents should be 8 digits long, but got " + length);
+            "Requested contents should be 7 or 8 digits long, but got " + length);
     }
+
+    checkNumeric(contents);
 
     int firstDigit = Character.digit(contents.charAt(0), 10);
     if (firstDigit != 0 && firstDigit != 1) {
