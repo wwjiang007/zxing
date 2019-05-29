@@ -49,6 +49,7 @@ import java.util.Map;
 final class MultiFinderPatternFinder extends FinderPatternFinder {
 
   private static final FinderPatternInfo[] EMPTY_RESULT_ARRAY = new FinderPatternInfo[0];
+  private static final FinderPattern[] EMPTY_FP_ARRAY = new FinderPattern[0];
   private static final FinderPattern[][] EMPTY_FP_2D_ARRAY = new FinderPattern[0][];
 
   // TODO MIN_MODULE_COUNT and MAX_MODULE_COUNT would be great hints to ask the user for
@@ -85,26 +86,17 @@ final class MultiFinderPatternFinder extends FinderPatternFinder {
     }
   }
 
-  /**
-   * <p>Creates a finder that will search the image for three finder patterns.</p>
-   *
-   * @param image image to search
-   */
-  MultiFinderPatternFinder(BitMatrix image) {
-    super(image);
-  }
-
   MultiFinderPatternFinder(BitMatrix image, ResultPointCallback resultPointCallback) {
     super(image, resultPointCallback);
   }
 
   /**
    * @return the 3 best {@link FinderPattern}s from our list of candidates. The "best" are
-   *         those that have been detected at least {@link #CENTER_QUORUM} times, and whose module
+   *         those that have been detected at least 2 times, and whose module
    *         size differs from the average among those patterns the least
    * @throws NotFoundException if 3 such finder patterns do not exist
    */
-  private FinderPattern[][] selectMutipleBestPatterns() throws NotFoundException {
+  private FinderPattern[][] selectMultipleBestPatterns() throws NotFoundException {
     List<FinderPattern> possibleCenters = getPossibleCenters();
     int size = possibleCenters.size();
 
@@ -117,13 +109,7 @@ final class MultiFinderPatternFinder extends FinderPatternFinder {
      * Begin HE modifications to safely detect multiple codes of equal size
      */
     if (size == 3) {
-      return new FinderPattern[][]{
-          new FinderPattern[]{
-              possibleCenters.get(0),
-              possibleCenters.get(1),
-              possibleCenters.get(2)
-          }
-      };
+      return new FinderPattern[][] { possibleCenters.toArray(EMPTY_FP_ARRAY) };
     }
 
     // Sort by estimated module size to speed up the upcoming checks
@@ -282,7 +268,7 @@ final class MultiFinderPatternFinder extends FinderPatternFinder {
         handlePossibleCenter(stateCount, i, maxJ);
       }
     } // for i=iSkip-1 ...
-    FinderPattern[][] patternInfo = selectMutipleBestPatterns();
+    FinderPattern[][] patternInfo = selectMultipleBestPatterns();
     List<FinderPatternInfo> result = new ArrayList<>();
     for (FinderPattern[] pattern : patternInfo) {
       ResultPoint.orderBestPatterns(pattern);

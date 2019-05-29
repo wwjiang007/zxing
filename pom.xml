@@ -19,7 +19,7 @@
 
   <groupId>com.google.zxing</groupId>
   <artifactId>zxing-parent</artifactId>
-  <version>3.3.4-SNAPSHOT</version>
+  <version>3.4.1-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <dependencyManagement>
@@ -64,7 +64,7 @@
       <dependency>
         <groupId>junit</groupId>
         <artifactId>junit</artifactId>
-        <version>4.12</version>
+        <version>4.13-beta-3</version>
         <scope>test</scope>
       </dependency>
     </dependencies>
@@ -81,13 +81,14 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-    <java.version>1.7</java.version>
-    <proguard.version>6.0.3</proguard.version>
+    <java.version>1.8</java.version>
+    <proguard.version>6.1.0</proguard.version>
     <proguard.plugin.version>2.0.14</proguard.plugin.version>
-    <slf4j.version>1.7.25</slf4j.version>
+    <slf4j.version>1.8.0-beta4</slf4j.version>
     <!-- This can't reference project.version as some subprojects version differently -->
-    <zxing.version>3.3.4-SNAPSHOT</zxing.version>
+    <zxing.version>3.4.1-SNAPSHOT</zxing.version>
     <android.platform>22</android.platform>
+    <maven.scm.version>1.9.5</maven.scm.version>
   </properties>
 
   <build>
@@ -121,6 +122,10 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-enforcer-plugin</artifactId>
       </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+      </plugin>
     </plugins>
     <pluginManagement>
       <plugins>
@@ -153,12 +158,13 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-compiler-plugin</artifactId>
-          <version>3.8.0</version>
+          <version>3.8.1</version>
           <configuration>
             <source>${java.version}</source>
             <target>${java.version}</target>
             <compilerArgs>
               <arg>-Xlint:all</arg>
+              <arg>-Xlint:-serial</arg>
             </compilerArgs>
           </configuration>
         </plugin>
@@ -178,7 +184,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-javadoc-plugin</artifactId>
-          <version>3.0.1</version>
+          <version>3.1.0</version>
           <configuration>
             <javadocVersion>${java.version}</javadocVersion>
             <quiet>true</quiet>
@@ -218,9 +224,6 @@
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-install-plugin</artifactId>
           <version>3.0.0-M1</version>
-          <configuration>
-            <createChecksum>true</createChecksum>
-          </configuration>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
@@ -230,17 +233,17 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-jar-plugin</artifactId>
-          <version>3.1.0</version>
+          <version>3.1.2</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-assembly-plugin</artifactId>
-          <version>3.1.0</version>
+          <version>3.1.1</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-jarsigner-plugin</artifactId>
-          <version>1.4</version>
+          <version>3.0.0</version>
           <executions>
             <execution>
               <id>signing</id>
@@ -272,7 +275,7 @@
             <dependency>
               <groupId>org.apache.maven.scm</groupId>
               <artifactId>maven-scm-provider-gitexe</artifactId>
-              <version>1.9.5</version> <!-- can't go to 1.10 until release plugin does -->
+              <version>${maven.scm.version}</version> <!-- can't go to 1.10 until release plugin does -->
             </dependency>
           </dependencies>
           <configuration>
@@ -285,7 +288,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-scm-plugin</artifactId>
-          <version>1.9.5</version>
+          <version>${maven.scm.version}</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
@@ -322,7 +325,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-surefire-plugin</artifactId>
-          <version>2.22.1</version>
+          <version>3.0.0-M3</version>
           <configuration>
             <forkCount>0.5C</forkCount>
             <systemPropertyVariables>
@@ -338,7 +341,7 @@
         <plugin>
           <groupId>com.simpligility.maven.plugins</groupId>
           <artifactId>android-maven-plugin</artifactId>
-          <version>4.5.0</version>
+          <version>4.6.0</version>
           <extensions>true</extensions>
           <executions>
             <execution>
@@ -460,14 +463,14 @@
             <dependency>
               <groupId>com.puppycrawl.tools</groupId>
               <artifactId>checkstyle</artifactId>
-              <version>8.14</version>
+              <version>8.20</version>
             </dependency>
           </dependencies>
         </plugin>
         <plugin>
           <groupId>org.apache.rat</groupId>
           <artifactId>apache-rat-plugin</artifactId>
-          <version>0.12</version>
+          <version>0.13</version>
           <configuration>
             <excludes>
               <exclude>**/.*</exclude>
@@ -516,11 +519,14 @@
               </goals>
             </execution>
           </executions>
+          <configuration>
+            <ignoredDifferencesFile>${project.parent.basedir}/src/clirr/ignored-differences.xml</ignoredDifferencesFile>
+          </configuration>
         </plugin>
         <plugin>
           <groupId>org.jacoco</groupId>
           <artifactId>jacoco-maven-plugin</artifactId>
-          <version>0.8.2</version>
+          <version>0.8.4</version>
           <executions>
             <execution>
               <goals>
@@ -657,6 +663,7 @@
   </licenses>
   <developers>
     <developer>
+      <id>zxing-authors</id>
       <name>ZXing Authors</name>
     </developer>
   </developers>
@@ -822,20 +829,6 @@
       <modules>
          <module>zxing.appspot.com</module>
       </modules>
-    </profile>
-    <profile>
-      <id>checkstyle</id>
-      <activation>
-        <jdk>[1.8,)</jdk> <!-- won't work with JDK 7 -->
-      </activation>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-checkstyle-plugin</artifactId>
-          </plugin>
-        </plugins>
-      </build>
     </profile>
     <profile>
       <id>javadoc-9</id>
