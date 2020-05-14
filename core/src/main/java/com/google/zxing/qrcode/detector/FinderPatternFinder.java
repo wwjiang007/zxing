@@ -94,7 +94,7 @@ public class FinderPatternFinder {
     int[] stateCount = new int[5];
     for (int i = iSkip - 1; i < maxI && !done; i += iSkip) {
       // Get a row of black/white values
-      clearCounts(stateCount);
+      doClearCounts(stateCount);
       int currentState = 0;
       for (int j = 0; j < maxJ; j++) {
         if (image.get(j, i)) {
@@ -130,15 +130,15 @@ public class FinderPatternFinder {
                     }
                   }
                 } else {
-                  shiftCounts2(stateCount);
+                  doShiftCounts2(stateCount);
                   currentState = 3;
                   continue;
                 }
                 // Clear state to start looking again
                 currentState = 0;
-                clearCounts(stateCount);
+                doClearCounts(stateCount);
               } else { // No, shift counts back by two
-                shiftCounts2(stateCount);
+                doShiftCounts2(stateCount);
                 currentState = 3;
               }
             } else {
@@ -232,17 +232,25 @@ public class FinderPatternFinder {
   }
 
   private int[] getCrossCheckStateCount() {
-    clearCounts(crossCheckStateCount);
+    doClearCounts(crossCheckStateCount);
     return crossCheckStateCount;
   }
 
+  @Deprecated
   protected final void clearCounts(int[] counts) {
-    for (int x = 0; x < counts.length; x++) {
-      counts[x] = 0;
-    }
+    doClearCounts(counts);
   }
 
+  @Deprecated
   protected final void shiftCounts2(int[] stateCount) {
+    doShiftCounts2(stateCount);
+  }
+
+  protected static void doClearCounts(int[] counts) {
+    Arrays.fill(counts, 0);
+  }
+
+  protected static void doShiftCounts2(int[] stateCount) {
     stateCount[0] = stateCount[2];
     stateCount[1] = stateCount[3];
     stateCount[2] = stateCount[4];
@@ -254,7 +262,7 @@ public class FinderPatternFinder {
    * After a vertical and horizontal scan finds a potential finder pattern, this method
    * "cross-cross-cross-checks" by scanning down diagonally through the center of the possible
    * finder pattern to see if the same proportion is detected.
-   * 
+   *
    * @param centerI row where a finder pattern was detected
    * @param centerJ center of the section that appears to cross a finder pattern
    * @return true if proportions are withing expected limits
@@ -616,7 +624,6 @@ public class FinderPatternFinder {
     possibleCenters.sort(moduleComparator);
 
     double distortion = Double.MAX_VALUE;
-    double[] squares = new double[3];
     FinderPattern[] bestPatterns = new FinderPattern[3];
 
     for (int i = 0; i < possibleCenters.size() - 2; i++) {
@@ -635,17 +642,49 @@ public class FinderPatternFinder {
             continue;
           }
 
-          squares[0] = squares0;
-          squares[1] = squaredDistance(fpj, fpk);
-          squares[2] = squaredDistance(fpi, fpk);
-          Arrays.sort(squares);
+          double a = squares0;
+          double b = squaredDistance(fpj, fpk);
+          double c = squaredDistance(fpi, fpk);
+
+          // sorts ascending - inlined
+          if (a < b) {
+            if (b > c) {
+              if (a < c) {
+                double temp = b;
+                b = c;
+                c = temp;
+              } else {
+                double temp = a;
+                a = c;
+                c = b;
+                b = temp;
+              }
+            }
+          } else {
+            if (b < c) {
+              if (a < c) {
+                double temp = a;
+                a = b;
+                b = temp;
+              } else {
+                double temp = a;
+                a = b;
+                b = c;
+                c = temp;
+              }
+            } else {
+              double temp = a;
+              a = c;
+              c = temp;
+            }
+          }
 
           // a^2 + b^2 = c^2 (Pythagorean theorem), and a = b (isosceles triangle).
           // Since any right triangle satisfies the formula c^2 - b^2 - a^2 = 0,
           // we need to check both two equal sides separately.
           // The value of |c^2 - 2 * b^2| + |c^2 - 2 * a^2| increases as dissimilarity
           // from isosceles right triangle.
-          double d = Math.abs(squares[2] - 2 * squares[1]) + Math.abs(squares[2] - 2 * squares[0]);
+          double d = Math.abs(c - 2 * b) + Math.abs(c - 2 * a);
           if (d < distortion) {
             distortion = d;
             bestPatterns[0] = fpi;
