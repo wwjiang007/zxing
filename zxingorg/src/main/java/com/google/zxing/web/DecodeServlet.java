@@ -59,7 +59,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -92,7 +91,7 @@ import javax.servlet.http.Part;
 @WebServlet(value = "/w/decode", loadOnStartup = 1, initParams = {
   @WebInitParam(name = "maxAccessPerTime", value = "120"),
   @WebInitParam(name = "accessTimeSec", value = "120"),
-  @WebInitParam(name = "maxEntries", value = "10000")
+  @WebInitParam(name = "maxEntries", value = "100000")
 })
 public final class DecodeServlet extends HttpServlet {
 
@@ -144,14 +143,6 @@ public final class DecodeServlet extends HttpServlet {
     String name = getClass().getSimpleName();
     timer = new Timer(name);
     destHostTracker = new DoSTracker(timer, name, maxAccessPerTime, accessTimeMS, maxEntries, null);
-    // Hack to try to avoid odd OOM due to memory leak in JAI?
-    timer.scheduleAtFixedRate(
-      new TimerTask() {
-        @Override
-        public void run() {
-          System.gc();
-        }
-      }, 0L, TimeUnit.MILLISECONDS.convert(10, TimeUnit.MINUTES));
   }
 
   @Override
@@ -221,7 +212,11 @@ public final class DecodeServlet extends HttpServlet {
       return;
     }
 
-    if (destHostTracker.isBanned(imageURI.getHost())) {
+    String host = imageURI.getHost();
+    // Also should parse for 172.x subnets
+    if (host == null || host.startsWith("10.") || host.startsWith("192.168.") ||
+        "127.0.0.1".equals(host) || "localhost".equals(host) ||
+        destHostTracker.isBanned(host)) {
       errorResponse(request, response, "badurl");
       return;
     }

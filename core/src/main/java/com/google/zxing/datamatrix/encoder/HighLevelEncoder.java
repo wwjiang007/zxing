@@ -111,23 +111,9 @@ public final class HighLevelEncoder {
   private HighLevelEncoder() {
   }
 
-  /*
-   * Converts the message to a byte array using the default encoding (cp437) as defined by the
-   * specification
-   *
-   * @param msg the message
-   * @return the byte array of the message
-   */
-
-  /*
-  public static byte[] getBytesForMessage(String msg) {
-    return msg.getBytes(Charset.forName("cp437")); //See 4.4.3 and annex B of ISO/IEC 15438:2001(E)
-  }
-   */
-
-  private static char randomize253State(char ch, int codewordPosition) {
+  private static char randomize253State(int codewordPosition) {
     int pseudoRandom = ((149 * codewordPosition) % 253) + 1;
-    int tempVariable = ch + pseudoRandom;
+    int tempVariable = PAD + pseudoRandom;
     return (char) (tempVariable <= 254 ? tempVariable : tempVariable - 254);
   }
 
@@ -200,7 +186,7 @@ public final class HighLevelEncoder {
       codewords.append(PAD);
     }
     while (codewords.length() < capacity) {
-      codewords.append(randomize253State(PAD, codewords.length() + 1));
+      codewords.append(randomize253State(codewords.length() + 1));
     }
 
     return context.getCodewords().toString();

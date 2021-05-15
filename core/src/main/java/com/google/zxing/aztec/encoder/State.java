@@ -16,6 +16,8 @@
 
 package com.google.zxing.aztec.encoder;
 
+import java.nio.charset.StandardCharsets;
+
 import java.util.Deque;
 import java.util.LinkedList;
 
@@ -46,12 +48,6 @@ final class State {
     this.mode = mode;
     this.binaryShiftByteCount = binaryBytes;
     this.bitCount = bitCount;
-    // Make sure we match the token
-    //int binaryShiftBitCount = (binaryShiftByteCount * 8) +
-    //    (binaryShiftByteCount == 0 ? 0 :
-    //     binaryShiftByteCount <= 31 ? 10 :
-    //     binaryShiftByteCount <= 62 ? 20 : 21);
-    //assert this.bitCount == token.getTotalBitCount() + binaryShiftBitCount;
   }
 
   int getMode() {
@@ -68,6 +64,25 @@ final class State {
 
   int getBitCount() {
     return bitCount;
+  }
+
+  State appendFLGn(int eci) {
+    State result = shiftAndAppend(HighLevelEncoder.MODE_PUNCT, 0); // 0: FLG(n)
+    Token token = result.token;
+    int bitsAdded = 3;
+    if (eci < 0) {
+      token = token.add(0, 3); // 0: FNC1
+    } else if (eci > 999999) {
+      throw new IllegalArgumentException("ECI code must be between 0 and 999999");
+    } else {
+      byte[] eciDigits = Integer.toString(eci).getBytes(StandardCharsets.ISO_8859_1);
+      token = token.add(eciDigits.length, 3); // 1-6: number of ECI digits
+      for (byte eciDigit : eciDigits) {
+        token = token.add(eciDigit - '0' + 2, 4);
+      }
+      bitsAdded += eciDigits.length * 4;
+    }
+    return new State(token, mode, 0, bitCount + bitsAdded);
   }
 
   // Create a new state representing this state with a latch to a (not
@@ -143,7 +158,7 @@ final class State {
       newModeBitCount += calculateBinaryShiftCost(other) - calculateBinaryShiftCost(this);
     } else if (this.binaryShiftByteCount > other.binaryShiftByteCount && other.binaryShiftByteCount > 0) {
       // maximum possible additional cost (we end up exceeding the 31 byte boundary and other state can stay beneath it)
-      newModeBitCount += 10; 
+      newModeBitCount += 10;
     }
     return newModeBitCount <= other.bitCount;
   }
@@ -168,7 +183,7 @@ final class State {
   public String toString() {
     return String.format("%s bits=%d bytes=%d", HighLevelEncoder.MODE_NAMES[mode], bitCount, binaryShiftByteCount);
   }
-  
+
   private static int calculateBinaryShiftCost(State state) {
     if (state.binaryShiftByteCount > 62) {
       return 21; // B/S with extended length

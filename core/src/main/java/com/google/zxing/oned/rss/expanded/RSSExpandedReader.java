@@ -31,6 +31,7 @@ import com.google.zxing.DecodeHintType;
 import com.google.zxing.FormatException;
 import com.google.zxing.NotFoundException;
 import com.google.zxing.Result;
+import com.google.zxing.ResultMetadataType;
 import com.google.zxing.ResultPoint;
 import com.google.zxing.common.BitArray;
 import com.google.zxing.common.detector.MathUtils;
@@ -166,7 +167,7 @@ public final class RSSExpandedReader extends AbstractRSSReader {
     }
 
     boolean tryStackedDecode = !this.rows.isEmpty();
-    storeRow(rowNumber, false); // TODO: deal with reversed rows
+    storeRow(rowNumber); // TODO: deal with reversed rows
     if (tryStackedDecode) {
       // When the image is 180-rotated, then rows are sorted in wrong direction.
       // Try twice with both the directions.
@@ -263,7 +264,7 @@ public final class RSSExpandedReader extends AbstractRSSReader {
     return false;
   }
 
-  private void storeRow(int rowNumber, boolean wasReversed) {
+  private void storeRow(int rowNumber) {
     // Discard if duplicate above or below; otherwise insert in order by row number.
     int insertPos = 0;
     boolean prevIsSame = false;
@@ -290,7 +291,7 @@ public final class RSSExpandedReader extends AbstractRSSReader {
       return;
     }
 
-    this.rows.add(insertPos, new ExpandedRow(this.pairs, rowNumber, wasReversed));
+    this.rows.add(insertPos, new ExpandedRow(this.pairs, rowNumber, false));
 
     removePartialRows(this.pairs, this.rows);
   }
@@ -355,12 +356,14 @@ public final class RSSExpandedReader extends AbstractRSSReader {
     ResultPoint[] firstPoints = pairs.get(0).getFinderPattern().getResultPoints();
     ResultPoint[] lastPoints  = pairs.get(pairs.size() - 1).getFinderPattern().getResultPoints();
 
-    return new Result(
+    Result result = new Result(
           resultingString,
           null,
           new ResultPoint[]{firstPoints[0], firstPoints[1], lastPoints[0], lastPoints[1]},
           BarcodeFormat.RSS_EXPANDED
       );
+    result.putMetadata(ResultMetadataType.SYMBOLOGY_IDENTIFIER, "]e0");
+    return result;
   }
 
   private boolean checkChecksum() {

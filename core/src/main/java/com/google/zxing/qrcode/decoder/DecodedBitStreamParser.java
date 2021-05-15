@@ -23,7 +23,7 @@ import com.google.zxing.common.CharacterSetECI;
 import com.google.zxing.common.DecoderResult;
 import com.google.zxing.common.StringUtils;
 
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -58,10 +58,13 @@ final class DecodedBitStreamParser {
     List<byte[]> byteSegments = new ArrayList<>(1);
     int symbolSequence = -1;
     int parityData = -1;
+    int symbologyModifier = 1;
 
     try {
       CharacterSetECI currentCharacterSetECI = null;
       boolean fc1InEffect = false;
+      boolean hasFNC1first = false;
+      boolean hasFNC1second = false;
       Mode mode;
       do {
         // While still another segment to read...
@@ -75,7 +78,12 @@ final class DecodedBitStreamParser {
           case TERMINATOR:
             break;
           case FNC1_FIRST_POSITION:
+            hasFNC1first = true; // symbology detection
+            // We do little with FNC1 except alter the parsed result a bit according to the spec
+            fc1InEffect = true;
+            break;
           case FNC1_SECOND_POSITION:
+            hasFNC1second = true; // symbology detection
             // We do little with FNC1 except alter the parsed result a bit according to the spec
             fc1InEffect = true;
             break;
@@ -128,6 +136,25 @@ final class DecodedBitStreamParser {
             break;
         }
       } while (mode != Mode.TERMINATOR);
+
+      if (currentCharacterSetECI != null) {
+        if (hasFNC1first) {
+          symbologyModifier = 4;
+        } else if (hasFNC1second) {
+          symbologyModifier = 6;
+        } else {
+          symbologyModifier = 2;
+        }
+      } else {
+        if (hasFNC1first) {
+          symbologyModifier = 3;
+        } else if (hasFNC1second) {
+          symbologyModifier = 5;
+        } else {
+          symbologyModifier = 1;
+        }
+      }
+
     } catch (IllegalArgumentException iae) {
       // from readBits() calls
       throw FormatException.getFormatInstance();
@@ -138,7 +165,8 @@ final class DecodedBitStreamParser {
                              byteSegments.isEmpty() ? null : byteSegments,
                              ecLevel == null ? null : ecLevel.toString(),
                              symbolSequence,
-                             parityData);
+                             parityData,
+                             symbologyModifier);
   }
 
   /**
@@ -173,11 +201,7 @@ final class DecodedBitStreamParser {
       count--;
     }
 
-    try {
-      result.append(new String(buffer, StringUtils.GB2312));
-    } catch (UnsupportedEncodingException ignored) {
-      throw FormatException.getFormatInstance();
-    }
+    result.append(new String(buffer, StringUtils.GB2312_CHARSET));
   }
 
   private static void decodeKanjiSegment(BitSource bits,
@@ -208,12 +232,7 @@ final class DecodedBitStreamParser {
       offset += 2;
       count--;
     }
-    // Shift_JIS may not be supported in some environments:
-    try {
-      result.append(new String(buffer, StringUtils.SHIFT_JIS));
-    } catch (UnsupportedEncodingException ignored) {
-      throw FormatException.getFormatInstance();
-    }
+    result.append(new String(buffer, StringUtils.SHIFT_JIS_CHARSET));
   }
 
   private static void decodeByteSegment(BitSource bits,
@@ -231,22 +250,18 @@ final class DecodedBitStreamParser {
     for (int i = 0; i < count; i++) {
       readBytes[i] = (byte) bits.readBits(8);
     }
-    String encoding;
+    Charset encoding;
     if (currentCharacterSetECI == null) {
       // The spec isn't clear on this mode; see
       // section 6.4.5: t does not say which encoding to assuming
       // upon decoding. I have seen ISO-8859-1 used as well as
       // Shift_JIS -- without anything like an ECI designator to
       // give a hint.
-      encoding = StringUtils.guessEncoding(readBytes, hints);
+      encoding = StringUtils.guessCharset(readBytes, hints);
     } else {
-      encoding = currentCharacterSetECI.name();
+      encoding = currentCharacterSetECI.getCharset();
     }
-    try {
-      result.append(new String(readBytes, encoding));
-    } catch (UnsupportedEncodingException ignored) {
-      throw FormatException.getFormatInstance();
-    }
+    result.append(new String(readBytes, encoding));
     byteSegments.add(readBytes);
   }
 

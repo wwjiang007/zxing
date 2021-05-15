@@ -40,7 +40,7 @@
   <parent>
     <groupId>com.google.zxing</groupId>
     <artifactId>zxing-parent</artifactId>
-    <version>3.4.1-SNAPSHOT</version>
+    <version>3.4.2-SNAPSHOT</version>
   </parent>
 
   <build>
@@ -62,6 +62,15 @@
         <artifactId>maven-javadoc-plugin</artifactId>
         <configuration>
           <skip>true</skip>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <configuration>
+          <configLocation>../src/checkstyle/checkstyle.xml</configLocation>
+          <!-- Android generated files -->
+          <excludes>**/R.java,**/BuildConfig.java,**/Manifest.java</excludes>
         </configuration>
       </plugin>
     </plugins>

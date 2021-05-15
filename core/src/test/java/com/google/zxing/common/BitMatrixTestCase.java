@@ -19,6 +19,8 @@ package com.google.zxing.common;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Arrays;
+
 /**
  * @author Sean Owen
  * @author dswitkin@google.com (Daniel Switkin)
@@ -158,6 +160,22 @@ public final class BitMatrixTestCase extends Assert {
   }
 
   @Test
+  public void testRotate90Simple() {
+    BitMatrix matrix = new BitMatrix(3, 3);
+    matrix.set(0, 0);
+    matrix.set(0, 1);
+    matrix.set(1, 2);
+    matrix.set(2, 1);
+
+    matrix.rotate90();
+
+    assertTrue(matrix.get(0, 2));
+    assertTrue(matrix.get(1, 2));
+    assertTrue(matrix.get(2, 1));
+    assertTrue(matrix.get(1, 0));
+  }
+
+  @Test
   public void testRotate180Simple() {
     BitMatrix matrix = new BitMatrix(3, 3);
     matrix.set(0, 0);
@@ -208,6 +226,25 @@ public final class BitMatrixTestCase extends Assert {
     assertEquals(emptyMatrix24, BitMatrix.parse("  \n  \n  \n  \n", "x", " "));
 
     assertEquals(centerMatrix, BitMatrix.parse(centerMatrix.toString("x", "."), "x", "."));
+  }
+
+  @Test
+  public void testParseBoolean() {
+    BitMatrix emptyMatrix = new BitMatrix(3, 3);
+    BitMatrix fullMatrix = new BitMatrix(3, 3);
+    fullMatrix.setRegion(0, 0, 3, 3);
+    BitMatrix centerMatrix = new BitMatrix(3, 3);
+    centerMatrix.setRegion(1, 1, 1, 1);
+    BitMatrix emptyMatrix24 = new BitMatrix(2, 4);
+
+    boolean[][] matrix = new boolean[3][3];
+    assertEquals(emptyMatrix, BitMatrix.parse(matrix));
+    matrix[1][1] = true;
+    assertEquals(centerMatrix, BitMatrix.parse(matrix));
+    for (boolean[] arr : matrix) {
+      Arrays.fill(arr, true);
+    }
+    assertEquals(fullMatrix, BitMatrix.parse(matrix));
   }
 
   @Test

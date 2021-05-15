@@ -19,6 +19,7 @@ package com.google.zxing.qrcode.encoder;
 import com.google.zxing.EncodeHintType;
 import com.google.zxing.WriterException;
 import com.google.zxing.common.BitArray;
+import com.google.zxing.common.StringUtils;
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 import com.google.zxing.qrcode.decoder.Mode;
 import com.google.zxing.qrcode.decoder.Version;
@@ -26,7 +27,6 @@ import com.google.zxing.qrcode.decoder.Version;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.UnsupportedEncodingException;
 import java.util.EnumMap;
 import java.util.Map;
 
@@ -66,7 +66,7 @@ public final class EncoderTestCase extends Assert {
   }
 
   @Test
-  public void testChooseMode() throws WriterException {
+  public void testChooseMode() {
     // Numeric mode.
     assertSame(Mode.NUMERIC, Encoder.chooseMode("0"));
     assertSame(Mode.NUMERIC, Encoder.chooseMode("0123456789"));
@@ -127,7 +127,7 @@ public final class EncoderTestCase extends Assert {
           ">>\n";
     assertEquals(expected, qrCode.toString());
   }
-  
+
   @Test
   public void testEncodeWithVersion() throws WriterException {
     Map<EncodeHintType, Object> hints = new EnumMap<>(EncodeHintType.class);
@@ -135,7 +135,7 @@ public final class EncoderTestCase extends Assert {
     QRCode qrCode = Encoder.encode("ABCDEF", ErrorCorrectionLevel.H, hints);
     assertTrue(qrCode.toString().contains(" version: 7\n"));
   }
-  
+
   @Test(expected = WriterException.class)
   public void testEncodeWithVersionTooSmall() throws WriterException {
     Map<EncodeHintType, Object> hints = new EnumMap<>(EncodeHintType.class);
@@ -580,7 +580,7 @@ public final class EncoderTestCase extends Assert {
   }
 
   @Test
-  public void testAppend8BitBytes() throws WriterException {
+  public void testAppend8BitBytes() {
     // 0x61, 0x62, 0x63
     BitArray bits = new BitArray();
     Encoder.append8BitBytes("abc", bits, Encoder.DEFAULT_BYTE_MODE_ENCODING);
@@ -742,12 +742,8 @@ public final class EncoderTestCase extends Assert {
     assertEquals(expected, qrCode.toString());
   }
 
-  private static String shiftJISString(byte[] bytes) throws WriterException {
-    try {
-      return new String(bytes, "Shift_JIS");
-    } catch (UnsupportedEncodingException uee) {
-      throw new WriterException(uee.toString());
-    }
+  private static String shiftJISString(byte[] bytes) {
+    return new String(bytes, StringUtils.SHIFT_JIS_CHARSET);
   }
 
 }
